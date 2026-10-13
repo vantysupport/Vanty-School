@@ -1,0 +1,145 @@
+/* Sistema de diseño VANTY School.
+   Los valores de color, radio y sombra provienen de app/vanty-theme.css de VANTY ABA (logo: #01ABFC → #0063D8),
+   para mantener la coherencia del ecosistema. Todo componente consume estos tokens; no hay colores sueltos. */
+
+:root {
+  --v-brand-from: #01abfc;
+  --v-brand-to: #0063d8;
+  --v-brand-gradient: linear-gradient(135deg, var(--v-brand-from) 0%, var(--v-brand-to) 100%);
+
+  --v-bg: #f3f8fe;
+  --v-bg-elevated: #ffffff;
+  --v-border: rgba(0, 72, 168, 0.1);
+  --v-border-strong: rgba(0, 72, 168, 0.18);
+  --v-text: #0b1b33;
+  --v-text-secondary: #4a5b78;
+  --v-text-tertiary: #7a8ba6;
+  --v-accent: #0069db;
+  --v-accent-hover: #0059c4;
+  --v-accent-soft: rgba(1, 153, 245, 0.1);
+  --v-fill: rgba(0, 72, 168, 0.05);
+  --v-success: #1fae6b;
+  --v-success-soft: rgba(31, 174, 107, 0.12);
+  --v-warning: #f59e0b;
+  --v-warning-soft: rgba(245, 158, 11, 0.14);
+  --v-danger: #e5484d;
+  --v-danger-soft: rgba(229, 72, 77, 0.1);
+  --v-glow-1: rgba(1, 171, 252, 0.16);
+  --v-glow-2: rgba(0, 99, 216, 0.1);
+  --v-radius-sm: 10px;
+  --v-radius: 18px;
+  --v-radius-lg: 28px;
+  --v-shadow-xs: 0 1px 2px rgba(0, 45, 110, 0.05);
+  --v-shadow: 0 1px 2px rgba(0, 45, 110, 0.05), 0 8px 24px rgba(0, 45, 110, 0.07);
+  --v-shadow-lg: 0 2px 6px rgba(0, 45, 110, 0.05), 0 24px 64px rgba(0, 45, 110, 0.13);
+  --v-shadow-brand: 0 8px 24px rgba(0, 105, 219, 0.3);
+}
+
+@theme inline {
+  --color-v-bg: var(--v-bg);
+  --color-v-elevated: var(--v-bg-elevated);
+  --color-v-border: var(--v-border);
+  --color-v-border-strong: var(--v-border-strong);
+  --color-v-text: var(--v-text);
+  --color-v-muted: var(--v-text-secondary);
+  --color-v-subtle: var(--v-text-tertiary);
+  --color-v-accent: var(--v-accent);
+  --color-v-accent-hover: var(--v-accent-hover);
+  --color-v-accent-soft: var(--v-accent-soft);
+  --color-v-fill: var(--v-fill);
+  --color-v-success: var(--v-success);
+  --color-v-success-soft: var(--v-success-soft);
+  --color-v-warning: var(--v-warning);
+  --color-v-warning-soft: var(--v-warning-soft);
+  --color-v-danger: var(--v-danger);
+  --color-v-danger-soft: var(--v-danger-soft);
+  --color-v-brand-from: var(--v-brand-from);
+  --color-v-brand-to: var(--v-brand-to);
+  --radius-v-sm: var(--v-radius-sm);
+  --radius-v: var(--v-radius);
+  --radius-v-lg: var(--v-radius-lg);
+  --shadow-v-xs: var(--v-shadow-xs);
+  --shadow-v: var(--v-shadow);
+  --shadow-v-lg: var(--v-shadow-lg);
+  --shadow-v-brand: var(--v-shadow-brand);
+  --font-display: var(--font-poppins), var(--font-jakarta), system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@utility v-brand {
+  background-image: var(--v-brand-gradient);
+  color: #fff;
+}
+
+@utility v-brand-text {
+  background-image: var(--v-brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.v-root {
+  color: var(--v-text);
+  background-color: var(--v-bg);
+  background-image:
+    radial-gradient(60rem 40rem at 10% -10%, var(--v-glow-1), transparent 60%),
+    radial-gradient(50rem 36rem at 110% 10%, var(--v-glow-2), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* ── Efectos de marca de las pantallas de acceso (tomados de VANTY ABA) ───── */
+.v-headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+/* Brillo que cruza una superficie al pasar el cursor. */
+.v-sweep { position: relative; overflow: hidden; isolation: isolate; }
+.v-sweep::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transform: translateX(-160%) skewX(-18deg);
+  pointer-events: none;
+  z-index: 1;
+}
+.v-sweep:hover::after { animation: v-sweep 0.8s ease-out 1; }
+/* Variante automática: el brillo cruza solo, cada cierto tiempo, sin esperar al cursor. */
+.v-sweep-auto::after, .v-sweep.v-sweep-auto:hover::after { animation: v-sweep-loop var(--v-sweep-duration, 6s) ease-in-out var(--v-sweep-delay, 0s) infinite; }
+@keyframes v-sweep-loop {
+  0% { transform: translateX(-160%) skewX(-18deg); }
+  22%, 100% { transform: translateX(360%) skewX(-18deg); }
+}
+@media (prefers-reduced-motion: reduce) { .v-sweep-auto::after { animation: none; } }
+@keyframes v-sweep {
+  0% { transform: translateX(-160%) skewX(-18deg); }
+  100% { transform: translateX(360%) skewX(-18deg); }
+}
+
+.v-shine-text {
+  background-image: linear-gradient(110deg, #ffffff 42%, #b9e8ff 50%, #ffffff 58%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: v-text-shine 6s linear infinite;
+}
+@keyframes v-text-shine {
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
+}
+
+/* Orbes de luz que derivan lentamente detrás del panel de marca. */
+@keyframes v-orb-a { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-40px, 30px) scale(1.1); } }
+@keyframes v-orb-b { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(50px, -30px); } }
+@keyframes v-orb-c { 0%, 100% { opacity: 0.25; transform: scale(0.9); } 50% { opacity: 0.6; transform: scale(1.05); } }
+.v-orb-a { animation: v-orb-a 14s ease-in-out infinite; }
+.v-orb-b { animation: v-orb-b 18s ease-in-out infinite; }
+.v-orb-c { animation: v-orb-c 8s ease-in-out infinite; }
+
+@keyframes v-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.v-rise { animation: v-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }

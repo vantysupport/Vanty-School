@@ -1,0 +1,113 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  color: var(--v-text);
+  background: var(--v-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Sistema de dos tipografías de VANTY ABA: títulos, cifras y negritas en Poppins; cuerpo en Plus Jakarta Sans. */
+h1, h2, h3, h4, .font-bold, .font-extrabold, .font-semibold, .v-display, b, strong {
+  font-family: var(--font-display);
+}
+/* En la capa base para que las utilidades (truncate, tracking-*) sigan mandando. */
+@layer base {
+  h1, h2, h3 { letter-spacing: -0.02em; text-wrap: balance; }
+  p { text-wrap: pretty; }
+}
+.tabular-nums, table { font-variant-numeric: tabular-nums; }
+
+@layer base {
+  button:not(:disabled), a { transition: transform 0.12s ease, background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
+}
+
+:focus-visible {
+  outline: 2px solid var(--v-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: rgba(1, 153, 245, 0.18);
+}
+
+/* Campos de formulario */
+.v-input {
+  width: 100%;
+  border-radius: var(--v-radius-sm);
+  border: 1px solid var(--v-border-strong);
+  background: var(--v-bg-elevated);
+  padding: 0.625rem 0.875rem;
+  font-size: 14px;
+  color: var(--v-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.v-input::placeholder { color: var(--v-text-tertiary); }
+.v-input:focus {
+  outline: none;
+  border-color: var(--v-accent);
+  box-shadow: 0 0 0 4px var(--v-accent-soft);
+}
+.v-input:disabled { background: var(--v-fill); color: var(--v-text-tertiary); }
+.v-input[aria-invalid="true"] { border-color: var(--v-danger); }
+
+/* iOS amplía la página si el campo mide menos de 16px */
+@media (max-width: 767px) {
+  .v-input { font-size: 16px; }
+}
+
+/* Skeleton */
+@keyframes v-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.v-skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--v-fill) 25%, rgba(0, 72, 168, 0.1) 50%, var(--v-fill) 75%);
+  background-size: 200% 100%;
+  animation: v-shimmer 1.5s infinite;
+}
+
+@keyframes v-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.v-pop { animation: v-pop 0.22s ease-out; }
+
+@keyframes v-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.v-fade { animation: v-fade 0.18s ease-out; }
+
+@keyframes v-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(-2deg); }
+}
+.v-float { animation: v-float 3s ease-in-out infinite; }
+
+@keyframes v-countdown {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--v-border-strong); border-radius: 999px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
