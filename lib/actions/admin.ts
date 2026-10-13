@@ -372,6 +372,22 @@ export async function withdrawEnrollment(id: string): Promise<ActionResult> {
 }
 
 // ── Configuración ───────────────────────────────────────────────────────────
+/** Registra el logo que el navegador ya subió a la carpeta del colegio (o lo quita con null) y borra el anterior. */
+export async function saveInstitutionLogo(path: string | null): Promise<ActionResult> {
+  const ctx = await actionContext('admin')
+  if (!ctx) return NOT_ALLOWED
+  const { session, db } = ctx
+  if (path && (!path.startsWith(`${session.institutionId}/`) || path.includes('..') || !/\.(png|jpg|webp)$/.test(path))) return fail('Archivo de logo inválido.')
+  const { data: before } = await db.from('institutions').select('logo_path').eq('id', session.institutionId).maybeSingle()
+  const { error } = await db.from('institutions').update({ logo_path: path }).eq('id', session.institutionId)
+  if (error) return dbError(error)
+  const old = before?.logo_path as string | null | undefined
+  if (old && old !== path) await db.storage.from('school-logos').remove([old])
+  await audit(db, session, { action: 'settings.update', entity: 'institution', metadata: { logo: !!path } })
+  revalidatePath('/', 'layout')
+  return ok(path ? 'Logo actualizado.' : 'Logo eliminado.')
+}
+
 export async function updateInstitution(form: FormData): Promise<ActionResult> {
   const ctx = await actionContext('admin')
   if (!ctx) return NOT_ALLOWED
@@ -381,6 +397,9 @@ export async function updateInstitution(form: FormData): Promise<ActionResult> {
     dependency: z.enum(['municipal', 'slep', 'particular_subvencionado', 'particular_pagado']),
     commune: z.string().trim().max(80).optional(),
     region: z.string().trim().max(80).optional(),
+    brand_color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color inválido.').optional(),
+    address: z.string().trim().max(160).optional(),
+    phone: z.string().trim().max(40).optional(),
     ai_enabled: z.enum(['on']).optional(),
     ai_daily_limit_per_user: z.coerce.number().int().min(0, 'El límite no puede ser negativo.').max(500).optional(),
     invitation_ttl_days: z.coerce.number().int().min(1).max(30).optional(),
@@ -390,7 +409,8 @@ export async function updateInstitution(form: FormData): Promise<ActionResult> {
   const { session, db } = ctx
   const v = parsed.data
   const [a, b] = await Promise.all([
-    db.from('institutions').update({ name: v.name, rbd: v.rbd ?? null, dependency: v.dependency, commune: v.commune ?? null, region: v.region ?? null }).eq('id', session.institutionId),
+    db.from('institutions').update({ name: v.name, rbd: v.rbd ?? null, dependency: v.dependency, commune: v.commune ?? null, region: v.region ?? null,
+      brand_color: v.brand_color ?? null, address: v.address ?? null, phone: v.phone ?? null }).eq('id', session.institutionId),
     // Los ajustes técnicos (límites de ARIA, vigencia de invitaciones) solo cambian si el formulario los envía:
     // la pantalla de secretaría no los incluye y no debe alterarlos.
     db.from('institution_settings').update({

@@ -21,7 +21,7 @@ const ICONS: Record<string, LucideIcon> = {
 type Props = {
   nav: NavItem[]
   user: { id: string; avatarVersion: string | null; name: string; email: string; roleLabel: string }
-  institution: { id: string; name: string; isDemo: boolean }
+  institution: { id: string; name: string; isDemo: boolean; logoUrl?: string | null }
   institutions: { id: string; name: string }[]
   switcher?: ReactNode   // selector propio de un rol (el apoderado elige a qué estudiante está viendo)
   profileHref?: string | null   // null: sin perfil propio (el panel del equipo Vanty)
@@ -48,8 +48,9 @@ export function Shell({ nav, user, institution, institutions, switcher, profileH
         <div className="relative shrink-0 px-4 pb-4 pt-6">
           <div className="flex items-center gap-3">
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-              className="relative size-12 shrink-0 overflow-hidden rounded-[30%] shadow-v-brand ring-1 ring-v-border">
-              <Image src="/brand/vanty-school-mark.webp" alt="" width={48} height={48} className="size-full object-cover" priority />
+              className={`relative size-12 shrink-0 overflow-hidden rounded-[30%] ring-1 ring-v-border ${institution.logoUrl ? 'bg-white shadow-v-xs' : 'shadow-v-brand'}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {institution.logoUrl ? <img src={institution.logoUrl} alt="" className="size-full object-contain p-0.5" /> : <Image src="/brand/vanty-school-mark.webp" alt="" width={48} height={48} className="size-full object-cover" priority />}
             </motion.div>
             <div className="min-w-0 flex-1">
               <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-v-text" title={institution.name}>{institution.name}</p>

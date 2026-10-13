@@ -33,9 +33,13 @@ function rpcError(error: { code?: string; message?: string }): ActionResult {
 }
 
 const schoolName = z.string({ required_error: 'Ingresa el nombre del colegio.' }).trim().min(2, 'Ingresa el nombre del colegio.').max(160)
+const branding = {
+  brand_color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color inválido.').optional(),
+  address: text(160), phone: text(40),
+}
 const school = z.object({
   name: schoolName,
-  rbd: text(20), dependency, commune: text(80), region: text(80),
+  rbd: text(20), dependency, commune: text(80), region: text(80), ...branding,
   year: z.coerce.number({ invalid_type_error: 'Ingresa el año escolar.' }).int().min(2000, 'Año inválido.').max(2100, 'Año inválido.'),
   stages: z.array(z.enum(['parvularia', 'basica', 'media'])).min(1, 'Elige al menos un nivel de enseñanza.'),
   subjects: z.literal('on').optional(),
@@ -44,38 +48,40 @@ const school = z.object({
 }).refine(v => !v.admin_email || (v.admin_name?.length ?? 0) >= 3, { path: ['admin_name'], message: 'Ingresa el nombre de quien administrará el colegio.' })
   .refine(v => !v.admin_name || !!v.admin_email, { path: ['admin_email'], message: 'Ingresa su correo.' })
 
-/** Crea el colegio con su base lista y, si se indicó, invita a su secretaría. */
-export async function createSchool(form: FormData): Promise<ActionResult> {
+export type CreateSchoolResult =
+  | { ok: true; id: string; name: string; invite: { name: string; email: string; link: string; days: number; sent: boolean } | null; inviteFailed: boolean }
+  | { ok: false; error: string; fieldErrors?: Record<string, string> }
+
+/** Crea el colegio con su base lista y, si se indicó, invita a su secretaría. Devuelve el id para subir el logo después. */
+export async function createSchool(form: FormData): Promise<CreateSchoolResult> {
   const ctx = await platformContext()
-  if (!ctx) return NOT_ALLOWED
-  if (!form.getAll('stages[]').length) return fail('Revisa los campos marcados.', { stages: 'Elige al menos un nivel de enseñanza.' })
+  if (!ctx) return { ok: false, error: 'No tienes permiso para realizar esta acción.' }
+  if (!form.getAll('stages[]').length) return { ok: false, error: 'Revisa los campos marcados.', fieldErrors: { stages: 'Elige al menos un nivel de enseñanza.' } }
   const parsed = parseForm(school, form)
-  if ('error' in parsed) return parsed.error
+  if ('error' in parsed) return parsed.error as CreateSchoolResult
   const v = parsed.data
 
   const { data: id, error } = await ctx.db.rpc('platform_create_institution', {
     p_name: v.name, p_rbd: v.rbd ?? '', p_dependency: v.dependency, p_commune: v.commune ?? '', p_region: v.region ?? '',
     p_year: v.year, p_stages: v.stages, p_subjects: v.subjects === 'on',
   })
-  if (error) return rpcError(error)
+  if (error) return rpcError(error) as CreateSchoolResult
+  if (v.brand_color || v.address || v.phone) await ctx.db.rpc('platform_set_branding', { p_inst: id, p_color: v.brand_color ?? '', p_address: v.address ?? '', p_phone: v.phone ?? '' })
   refresh()
 
-  if (!v.admin_email) return ok(`${v.name} quedó creado. Falta invitar a su secretaría desde la ficha del colegio.`)
+  const created = { ok: true as const, id: id as string, name: v.name }
+  if (!v.admin_email) return { ...created, invite: null, inviteFailed: false }
   const token = newToken()
   const { data: days, error: inviteError } = await ctx.db.rpc('platform_invite', { p_inst: id, p_email: v.admin_email, p_full_name: v.admin_name, p_role: 'admin', p_token_hash: hashToken(token) })
-  if (inviteError) return ok(`${v.name} quedó creado, pero no se pudo generar la invitación. Créala desde la ficha del colegio.`)
+  if (inviteError) return { ...created, invite: null, inviteFailed: true }
   const link = `${await origin()}/invitacion/${token}`
   const sent = await sendEmail(v.admin_email, invitationEmail({ name: v.admin_name!, school: v.name, roleLabel: ROLE_LABEL.admin, link, days, siteUrl: appBaseUrl() }))
-  return ok(`${v.name} quedó creado, con la invitación para ${v.admin_name}.`, {
-    label: 'Enlace de invitación para secretaría (se muestra una sola vez)',
-    value: link,
-    note: `${delivery(sent, v.admin_email)} Vence en ${days} días y sirve para una sola cuenta: con ella el colegio crea sus cursos e invita a su comunidad.`,
-  })
+  return { ...created, invite: { name: v.admin_name!, email: v.admin_email, link, days: days as number, sent }, inviteFailed: false }
 }
 
 const delivery = (sent: boolean, email: string) => sent ? `Ya se envió por correo a ${email}.` : 'No se envió por correo: entrégalo tú por un canal seguro.'
 
-const schoolData = z.object({ name: schoolName, rbd: text(20), dependency, commune: text(80), region: text(80) })
+const schoolData = z.object({ name: schoolName, rbd: text(20), dependency, commune: text(80), region: text(80), ...branding })
 
 export async function updateSchool(id: string, form: FormData): Promise<ActionResult> {
   const ctx = await platformContext()
@@ -85,8 +91,23 @@ export async function updateSchool(id: string, form: FormData): Promise<ActionRe
   const v = parsed.data
   const { error } = await ctx.db.rpc('platform_update_institution', { p_inst: id, p_name: v.name, p_rbd: v.rbd ?? '', p_dependency: v.dependency, p_commune: v.commune ?? '', p_region: v.region ?? '' })
   if (error) return rpcError(error)
+  const { error: brandError } = await ctx.db.rpc('platform_set_branding', { p_inst: id, p_color: v.brand_color ?? '', p_address: v.address ?? '', p_phone: v.phone ?? '' })
+  if (brandError) return rpcError(brandError)
   refresh()
   return ok('Datos del colegio actualizados.')
+}
+
+/** Registra el logo que el navegador ya subió a la carpeta del colegio (o lo quita con null) y borra el anterior. */
+export async function setSchoolLogo(id: string, path: string | null): Promise<ActionResult> {
+  const ctx = await platformContext()
+  if (!ctx || !uuid.safeParse(id).success) return NOT_ALLOWED
+  if (path && (!path.startsWith(`${id}/`) || path.includes('..') || !/\.(png|jpg|webp)$/.test(path))) return fail('Archivo de logo inválido.')
+  const { data: old, error } = await ctx.db.rpc('platform_set_logo', { p_inst: id, p_path: path ?? '' })
+  if (error) return rpcError(error)
+  if (old && old !== path) await ctx.db.storage.from('school-logos').remove([old as string])
+  refresh()
+  revalidatePath('/', 'layout')
+  return ok(path ? 'Logo actualizado.' : 'Logo eliminado.')
 }
 
 export async function setSchoolStatus(id: string, status: 'active' | 'suspended'): Promise<ActionResult> {

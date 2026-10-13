@@ -7,7 +7,7 @@ import { isRole, ROLE_HOME, type Role } from '@/lib/roles'
 
 export const INSTITUTION_COOKIE = 'vs_inst'
 
-export type Membership = { institutionId: string; institutionName: string; isDemo: boolean; role: Role }
+export type Membership = { institutionId: string; institutionName: string; isDemo: boolean; role: Role; logoPath: string | null }
 
 export type Session = Membership & {
   userId: string
@@ -28,12 +28,12 @@ export const getSession = cache(async (): Promise<Session | null> => {
     supabase.from('profiles').select('full_name, avatar_path').eq('id', user.id).maybeSingle(),
     supabase
       .from('institution_memberships')
-      .select('institution_id, role, institutions(name, is_demo, status)')
+      .select('institution_id, role, institutions(name, is_demo, status, logo_path)')
       .eq('user_id', user.id)
       .eq('status', 'active'),
   ])
 
-  type Row = { institution_id: string; role: string; institutions: { name: string; is_demo: boolean; status: string } | null }
+  type Row = { institution_id: string; role: string; institutions: { name: string; is_demo: boolean; status: string; logo_path: string | null } | null }
   const memberships: Membership[] = ((rows ?? []) as unknown as Row[])
     .filter(r => r.institutions?.status === 'active' && isRole(r.role))
     .map(r => ({
@@ -41,6 +41,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
       institutionName: r.institutions!.name,
       isDemo: r.institutions!.is_demo,
       role: r.role as Role,
+      logoPath: r.institutions!.logo_path,
     }))
   if (memberships.length === 0) return null
 

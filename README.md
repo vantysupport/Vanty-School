@@ -95,6 +95,7 @@ Aplica las migraciones de `supabase/migrations/` **en orden** (SQL Editor de Sup
 | `0033_guardian_sees_requests.sql` | El apoderado ve las solicitudes de apoyo que su pupilo envía por su cuenta, salvo las de «situación en casa» y las que bienestar reserve; las respuestas siguen siendo solo del estudiante |
 | `0034_feedback_cycle.sql` | Evaluación de clases: promedios desde 5 respuestas y comentarios desde 10; el docente ve sus resultados agregados, la lectura de ARIA que dirección le comparta y registra sus estrategias |
 | `0035_platform.sql` | Nivel de plataforma (equipo Vanty): alta de colegios con su base lista, invitación a secretaría y dirección, suspensión y reactivación. Solo devuelve cifras, nunca datos de estudiantes |
+| `0036_school_branding.sql` | Identidad de cada colegio: logo (bucket público `school-logos`), color, dirección y teléfono. Los cambian la secretaría del colegio o el equipo Vanty |
 
 ### Datos de demostración
 

@@ -1,7 +1,9 @@
 import { Building2, LifeBuoy } from 'lucide-react'
 import { requireSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
-import { updateInstitution } from '@/lib/actions/admin'
+import { saveInstitutionLogo, updateInstitution } from '@/lib/actions/admin'
+import { BRAND_COLORS, DEFAULT_COLOR, logoUrl } from '@/lib/platform'
+import { LogoUploader } from '@/components/platform/logo-uploader'
 import { Card, CardBody, CardHeader, Field, Input, PageHeader, Select, Textarea } from '@/components/ui/primitives'
 import { InlineForm, SubmitButton } from '@/components/ui/dialog'
 
@@ -11,13 +13,17 @@ export default async function SettingsPage() {
   const session = await requireSession('admin')
   const db = await createClient()
   const [{ data: inst }, { data: settings }] = await Promise.all([
-    db.from('institutions').select('name, rbd, dependency, commune, region').eq('id', session.institutionId).single(),
+    db.from('institutions').select('name, rbd, dependency, commune, region, logo_path, brand_color, address, phone').eq('id', session.institutionId).single(),
     db.from('institution_settings').select('urgent_protocol').eq('institution_id', session.institutionId).single(),
   ])
 
   return (
     <>
       <PageHeader title="Configuración" description="Los datos del establecimiento y a quién acudir ante una urgencia." />
+      <Card className="mb-4">
+        <CardHeader icon={<Building2 size={15} />} title="Logo del colegio" description="Aparece en el menú de todas las personas del colegio" />
+        <CardBody><LogoUploader institutionId={session.institutionId} name={inst?.name ?? session.institutionName} url={logoUrl(inst?.logo_path as string | null)} save={saveInstitutionLogo} /></CardBody>
+      </Card>
       <InlineForm action={updateInstitution} resetOnSuccess={false}>
         <div className="grid items-stretch gap-4 lg:grid-cols-2">
           <Card className="flex flex-col">
@@ -37,7 +43,20 @@ export default async function SettingsPage() {
                   </Field>
                   <Field label="Comuna"><Input name="commune" defaultValue={inst?.commune ?? ''} /></Field>
                   <Field label="Región"><Input name="region" defaultValue={inst?.region ?? ''} /></Field>
+                  <Field label="Dirección"><Input name="address" maxLength={160} defaultValue={(inst?.address as string | null) ?? ''} /></Field>
+                  <Field label="Teléfono"><Input name="phone" type="tel" maxLength={40} defaultValue={(inst?.phone as string | null) ?? ''} /></Field>
                 </div>
+                <fieldset>
+                  <legend className="mb-2 text-[12.5px] font-medium text-v-text">Color del colegio</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {BRAND_COLORS.map(c => (
+                      <label key={c.value} title={c.label} className="cursor-pointer">
+                        <input type="radio" name="brand_color" value={c.value} defaultChecked={((inst?.brand_color as string | null) ?? DEFAULT_COLOR).toLowerCase() === c.value} className="peer sr-only" />
+                        <span className="block size-9 rounded-full ring-offset-2 ring-offset-v-elevated peer-checked:ring-2 peer-checked:ring-v-text peer-focus-visible:ring-2 peer-focus-visible:ring-v-accent" style={{ background: c.value }}><span className="sr-only">{c.label}</span></span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
               </div>
             </CardBody>
           </Card>

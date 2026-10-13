@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Ban, CalendarDays, Check, Circle, ListChecks, MailPlus, Pencil, Power, ShieldCheck, Users, X } from 'lucide-react'
+import { ArrowLeft, Ban, CalendarDays, Check, Circle, ImagePlus, ListChecks, MailPlus, Pencil, Power, ShieldCheck, Users, X } from 'lucide-react'
 import { requirePlatform } from '@/lib/auth/platform'
 import { createClient } from '@/lib/supabase/server'
-import { inviteSchoolAdmin, revokeSchoolInvitation, setSchoolStatus, updateSchool } from '@/lib/actions/platform'
-import { DEPENDENCIES, setupSteps, type SchoolDetail } from '@/lib/platform'
+import { inviteSchoolAdmin, revokeSchoolInvitation, setSchoolLogo, setSchoolStatus, updateSchool } from '@/lib/actions/platform'
+import { coverStyle, DEPENDENCIES, logoUrl, setupSteps, type Branding, type SchoolDetail } from '@/lib/platform'
+import { LogoUploader } from '@/components/platform/logo-uploader'
 import { ROLE_LABEL, ROLES } from '@/lib/roles'
 import { fmtDate } from '@/lib/format'
 import { Badge, Card, CardBody, CardHeader, EmptyState, Field, Input, Notice, Select } from '@/components/ui/primitives'
@@ -22,9 +23,11 @@ export default async function PlatformSchool({ params }: { params: Promise<{ id:
   const { id } = await params
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const db = await createClient()
-  const { data } = await db.rpc('platform_institution', { p_inst: id })
+  const [{ data }, { data: brand }] = await Promise.all([db.rpc('platform_institution', { p_inst: id }), db.rpc('platform_branding')])
   const school = data as SchoolDetail | null
   if (!school) notFound()
+  const branding = ((brand ?? {}) as Record<string, Branding>)[id] ?? { logo_path: null, brand_color: null, address: null, phone: null }
+  const logo = logoUrl(branding.logo_path)
 
   const steps = setupSteps(school)
   const done = steps.filter(s => s.done).length
@@ -36,10 +39,13 @@ export default async function PlatformSchool({ params }: { params: Promise<{ id:
     <>
       <Link href="/plataforma" className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-v-muted hover:text-v-text"><ArrowLeft size={14} />Colegios</Link>
 
-      <section className={`v-brand relative overflow-hidden rounded-v-lg px-5 py-6 text-white shadow-v-brand sm:px-7 ${suspended ? 'grayscale' : ''}`}>
+      <section style={coverStyle(branding.brand_color)} className={`relative overflow-hidden rounded-v-lg px-5 py-6 text-white shadow-v sm:px-7 ${suspended ? 'grayscale' : ''}`}>
         <span aria-hidden className="absolute -right-16 -top-20 size-64 rounded-full bg-white/10" />
         <div className="relative flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {logo && <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-[26%] bg-white shadow-v"><img src={logo} alt="" className="size-full object-contain p-1" /></span>}
+            <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] font-semibold">
               <span className="rounded-full bg-white/20 px-2.5 py-0.5">{suspended ? 'Suspendido' : 'Activo'}</span>
               {school.is_demo && <span className="rounded-full bg-white/20 px-2.5 py-0.5">Demostración</span>}
@@ -47,10 +53,12 @@ export default async function PlatformSchool({ params }: { params: Promise<{ id:
             </p>
             <h1 className="v-display mt-2.5 text-[clamp(1.6rem,3.4vw,2.4rem)] font-bold leading-tight tracking-tight">{school.name}</h1>
             <p className="mt-1.5 text-[14px] text-white/85">{[school.commune, school.region, DEPENDENCIES[school.dependency], school.rbd ? `RBD ${school.rbd}` : null].filter(Boolean).join(' · ')}</p>
+            {(branding.address || branding.phone) && <p className="mt-0.5 text-[13px] text-white/75">{[branding.address, branding.phone].filter(Boolean).join(' · ')}</p>}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <FormDialog trigger={<><Pencil size={14} />Editar datos</>} variant="secondary" size="sm" title="Datos del colegio" action={updateSchool.bind(null, school.id)}>
-              <SchoolFields school={school} />
+            <FormDialog trigger={<><Pencil size={14} />Editar datos</>} variant="secondary" size="sm" title="Datos del colegio" wide action={updateSchool.bind(null, school.id)}>
+              <SchoolFields school={{ ...school, ...branding }} />
             </FormDialog>
             {!school.is_demo && (suspended ? (
               <ConfirmAction action={setSchoolStatus.bind(null, school.id, 'active')} variant="secondary" size="sm" title="Reactivar colegio" confirmLabel="Reactivar"
@@ -112,6 +120,11 @@ export default async function PlatformSchool({ params }: { params: Promise<{ id:
       </div>
 
       <Card index={4} className="mt-4">
+        <CardHeader icon={<ImagePlus size={15} />} title="Identidad" description="El logo que ve la comunidad del colegio. El color y los datos se cambian en «Editar datos»." />
+        <CardBody><LogoUploader institutionId={school.id} name={school.name} url={logo} save={setSchoolLogo.bind(null, school.id)} /></CardBody>
+      </Card>
+
+      <Card index={5} className="mt-4">
         <CardHeader icon={<ShieldCheck size={15} />} title="Quién administra el colegio" description="Secretaría y dirección. El resto de las cuentas las crea el propio colegio."
           actions={!suspended ? (
             <FormDialog trigger={<><MailPlus size={14} />Invitar</>} size="sm" title="Invitar a secretaría o dirección" submitLabel="Crear invitación" action={inviteSchoolAdmin.bind(null, school.id)}

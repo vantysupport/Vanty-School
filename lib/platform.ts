@@ -19,6 +19,36 @@ export const STAGES = [
   { key: 'media', label: 'Educación media', hint: '1.º a 4.º medio' },
 ] as const
 
+/** Dirección pública del logo de un colegio (bucket público «school-logos»). */
+export const logoUrl = (path: string | null | undefined) =>
+  path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/school-logos/${path}` : null
+
+export const DEFAULT_COLOR = '#0069db'
+export const BRAND_COLORS = [
+  { value: '#0069db', label: 'Azul Vanty' }, { value: '#0e7490', label: 'Petróleo' }, { value: '#047857', label: 'Verde' },
+  { value: '#b45309', label: 'Ámbar' }, { value: '#b91c1c', label: 'Rojo' }, { value: '#be185d', label: 'Frambuesa' },
+  { value: '#6d28d9', label: 'Violeta' }, { value: '#1e3a8a', label: 'Azul marino' },
+]
+/** Degradado de portada a partir del color del colegio. */
+export const coverStyle = (color: string | null | undefined) => {
+  const c = color && /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_COLOR
+  return { background: `linear-gradient(135deg, color-mix(in srgb, ${c} 78%, white) 0%, ${c} 55%, color-mix(in srgb, ${c} 82%, black) 100%)` }
+}
+
+/** Lo que se crea junto con el colegio, según los niveles elegidos (igual que platform_create_institution). */
+const GRADES_PER_STAGE: Record<string, number> = { parvularia: 2, basica: 8, media: 4 }
+const SUBJECT_STAGES: string[][] = [
+  ['parvularia', 'basica'], ['basica', 'media'], ['parvularia', 'basica', 'media'], ['basica', 'media'], ['basica', 'media'], ['basica', 'media'],
+  ['parvularia', 'basica', 'media'], ['parvularia', 'basica', 'media'], ['parvularia', 'basica', 'media'], ['basica', 'media'], ['basica', 'media'], ['basica', 'media'],
+  ['media'], ['media'], ['media'],
+]
+export const baseFor = (stages: string[], withSubjects: boolean) => ({
+  grades: stages.reduce((n, s) => n + (GRADES_PER_STAGE[s] ?? 0), 0),
+  subjects: withSubjects ? SUBJECT_STAGES.filter(list => list.some(s => stages.includes(s))).length : 0,
+})
+
+export type Branding = { logo_path: string | null; brand_color: string | null; address: string | null; phone: string | null }
+
 export type SchoolRow = {
   id: string; name: string; rbd: string | null; dependency: string; commune: string | null; region: string | null
   status: 'active' | 'suspended'; is_demo: boolean; created_at: string

@@ -1,5 +1,6 @@
 import { requireSession } from '@/lib/auth/session'
 import { getPlatformUser } from '@/lib/auth/platform'
+import { logoUrl } from '@/lib/platform'
 import { createClient } from '@/lib/supabase/server'
 import { NAV, ROLE_LABEL, STUDENT_SIMPLE_NAV } from '@/lib/roles'
 import { usesSimpleMode } from '@/lib/student-mode'
@@ -40,7 +41,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     <Shell
       nav={platform ? [...nav, { href: '/plataforma', label: 'Plataforma Vanty', icon: 'building' }] : nav}
       user={{ id: session.userId, avatarVersion: session.avatarPath, name: session.fullName, email: session.email, roleLabel: ROLE_LABEL[session.role] }}
-      institution={{ id: session.institutionId, name: session.institutionName, isDemo: session.isDemo }}
+      institution={{ id: session.institutionId, name: session.institutionName, isDemo: session.isDemo, logoUrl: logoUrl(session.logoPath) }}
       institutions={session.memberships.map(m => ({ id: m.institutionId, name: m.institutionName }))}
       switcher={family?.pupil && family.pupils.length > 1 ? <PupilSwitcher pupils={family.pupils} activeId={family.pupil.id} alerts={alerts} /> : undefined}
     >
